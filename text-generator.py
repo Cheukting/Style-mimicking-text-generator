@@ -8,18 +8,19 @@ def remove_stage_dir(text):
     text = re.sub("[\<].*?[\>]", "", text)
     text = re.sub("\\s+", " ", text)
     return text
+# this is used to remove the word "SPEECH" adn the number following after that in the corpus
 def remove_SPEECH(text):
     text = re.sub("SPEECH \d+", "", text)
     text = re.sub("\\s+", " ", text)
     return text
 
-path = './path'
+path = './trump' #change the path accordingly
 in_sentences=[]
 # read all files in the floder (need to be txt with UTF-8 encoding)
 # chop it up in sentances (for Tokenizer)
 for filename in os.listdir(path):
     text = ''.join(open(path+'/'+filename, encoding = "UTF-8", mode="r").readlines())
-    split_text = re.split(r' *[\.\?!][\'"\)\]]* *', remove_stage_dir(text))
+    split_text = re.split(r' *[\.\?!][\'"\)\]]* *', remove_SPEECH(text)) #change the function accordingly
     for chunk in split_text:
         in_sentences.append(chunk)
 
@@ -55,7 +56,7 @@ if len(tokenizer.word_index) < max_num_word:
     
 print('Number of words:', max_num_word)
 
-#stick the encoded words back together is a big sequence
+#stick the encoded words back together as a big sequence
 token_word = []
 for line in range (0,len(in_sentences)):
     that_sentences = list_tokenized_train[line]
@@ -66,7 +67,7 @@ for line in range (0,len(in_sentences)):
 for i in range(0, len(token_word) - maxlen, step):
     sentences.append(token_word[i: i + maxlen])
     next_word.append(token_word[i + maxlen])
-print('Number of sequences:', len(sentences))
+print('Number of sentences:', len(sentences))
 
 #nomalized x
 x = np.asarray(sentences).astype('float32')/max_num_word
@@ -89,7 +90,8 @@ model.summary()
 
 # Since our prediction are one-hot encoded, use `categorical_crossentropy` as the loss
 optimizer = keras.optimizers.RMSprop(lr=0.01)
-model.compile(loss='mse', optimizer=optimizer)
+model.compile(loss='categorical_crossentropy', optimizer=optimizer)
+model.fit(x, y, batch_size=256, epochs=1)
 
 #this is for sampling the next work with a prediction distribution
 def sample(preds, temperature=0.1):
@@ -98,8 +100,6 @@ def sample(preds, temperature=0.1):
     preds = exp_preds / np.sum(exp_preds)
     probas = np.random.multinomial(1, preds, 1)
     return np.argmax(probas)
-
-model.fit(x, y, batch_size=256, epochs=1)
 
 #to change back to word
 reverse_word_map = dict(map(reversed, tokenizer.word_index.items()))
@@ -115,7 +115,7 @@ print('--- Generating with seed ---')
 print(generated_text)
 print('--- --- --- --- --- ---')
 
-for i in range(20): #generate 20 words
+for i in range(40): #generate 20 words
 
     array_seed = np.zeros((maxlen,1))
     array_seed[:,0] = np.asarray(generated_seed).astype('float32')/max_num_word
